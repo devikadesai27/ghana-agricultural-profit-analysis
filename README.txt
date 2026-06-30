@@ -1,0 +1,83 @@
+Project Overview:
+
+This repository contains the full workflow for a data-driven analysis project, including explanatory data analysis (EDA), data cleaning, merging, diagnostics, and regression modeling.
+All work was developed using R (the project includes an .Rproj file).
+
+The project is organized into dedicated directories for figures, diagnostics, code, and documentation for each analysis step.
+
+Reposatory Structure:
+├── Figures/                           # Figues for EDA analysis of local area characteristics
+│   └── EDA figures, local area characteristics, profit per acre, etc.
+│
+├── code/                              # Script files used for analysis
+│   └── Merged PR #11 from main
+│
+├── community/diagnostics/             # Diagnostics plots for all 4 models
+│   └── Residual plots, model checks, etc.
+│
+├── figures/                           # Additional figures for EDA analysis of education and employment variables, diagnostic plots for pooled log model and R project file for relative path
+│
+├── .Education_EDA_README              # EDA summary for education dataset
+├── .Education_README                  # Documentation for the cleaned education dataset
+├── .Employment_EDA_README             # EDA & employment–profit correlations
+├── .Employment_README                 # Cleaned + aggregated employment dataset
+├── .Regression_Analysis_pooledlogmodel_README
+│                                      # Documentation of pooled log-profit regression model
+│
+├── Community_README                   # Cleaning + merging details for community dataset
+├── Final_Merge_README                 # Complete summary of all steps to create the final dataset
+├── .gitignore                         # Git ignore rules
+├── dtc-dtc-1.Rproj                    # R Project file
+└── README.md                          # (You are here)         
+                       
+Project Component:
+1. Explanatory Data Analysis (EDA)
+-Conducted EDA for education, employment and local area characteristics datasets.
+-Analyzed correlations, distributions, and local area characteristics.
+-Documentation:
+-.Education_EDA_README
+-.Employment_EDA_README
+
+2. Data Cleaning & Preprocessing
+- Cleaned, standardized and merged raw datasets.
+- Aggregated data to household level.
+-Documentation:
+-.Education_README
+-.Employment_README
+-Community_README
+
+3. Final Data Merge:
+-Combined cleaned datasets into one analytical dataset.
+-Documentation:
+-Final_Merge_README
+
+4.Regression Analysis:
+-Created transformed datasets for log-profit regression.
+-Fit pooled regression models.
+-Generated diagnostic plots for all models (in community/diagnostics/).
+Documentation:
+-.Regression_Analysis_pooledlogmodel_README
+
+5. Figures and reports:
+Visualizations for:
+-EDA findings
+-Profit per acre
+-Model diagnostics
+
+Stored in:
+-Figures/
+-figures/
+
+6. How to use this reposatory
+- Colne the reposatory:
+git clone <repo-url>
+
+-Open the R Project:
+Open dtc-dtc-1.Rproj in RStudio.
+
+-Navigate the workflow:
+start with READMEs.
+Follow through cleaning and mergeing steps.
+Review modeling outputs and diagnostics.
+Explore modeling outputs and diagnostics.
+Explore figures for insights.

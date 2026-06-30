@@ -1,0 +1,611 @@
+# Ghana Community & EA-Level Data Construction (GLSS4)
+
+This project builds a unified **Enumeration Area (EA)-level community dataset** from multiple GLSS4 community modules (`cs0`–`cs5b`, `sec0`, `sec1`, `sec2`, `cs3`, `cs4a/b/c`) to support analysis of **agricultural profit per acre** and its relationship with local infrastructure, education, health environment, and agricultural inputs.
+
+All source data are provided in **Stata `.dta` format** and are cleaned and aggregated in **R** to a consistent EA-level structure, with harmonized IDs and standardized binary coding.
+
+---
+
+## 1. Requirements
+
+### 1.1. Software
+
+- R (version 4.x recommended)
+
+### 1.2. R Packages
+
+The scripts use the following packages:
+
+- `haven` – read/write Stata `.dta` files
+- `dplyr` – data manipulation
+- `tidyr` – reshaping and aggregation
+- `purrr` – functional tools for merging
+- `labelled` – attach variable labels
+- `tidyverse` – (optional umbrella for dplyr/tidyr/readr/ggplot2, etc.)
+
+Install (if needed):
+
+```r
+install.packages(c("haven", "dplyr", "tidyr", "purrr", "labelled", "tidyverse"))
+
+2. Data Inputs
+
+All scripts assume the raw Stata files are available in the current working directory:
+
+sec0a.dta – Reference geo-ID file (EA–region–district mapping)
+
+cs1.dta – Population (Section 1)
+
+cs2.dta – Community infrastructure, markets, roads, migration, projects (Section 2)
+
+cs3.dta – Education & adult literacy (Section 3)
+
+cs4a.dta – Health worker access (Section 4a)
+
+cs4b.dta – Health facilities (Section 4b)
+
+cs4c.dta – Health context, disease environment & service problems (Section 4c)
+
+cs5b.dta – Agricultural inputs & services (Section 5b)
+
+The final merged EA-level community file is saved as:
+
+EA_master_community_allmodules.dta
+
+3. Overall Workflow
+
+The project follows this high-level sequence (script names are illustrative; you can rename them as you like):
+
+
+01_cs1_population.R
+
+Aggregates cs1.dta to EA-level total population.
+
+02_cs2_infrastructure.R
+
+Cleans and aggregates cs2.dta to EA-level infrastructure, markets, migration, projects.
+
+03_cs3_education.R
+
+Cleans and aggregates cs3.dta to EA-level education, enrollment, and schooling barriers.
+
+04_cs4a_health_workers.R
+
+Constructs EA-level health worker access and distance indices from cs4a.dta.
+
+05_cs4b_health_facilities.R
+
+Constructs EA-level health facility availability and distances from cs4b.dta.
+
+06_cs4c_health_context.R
+
+Constructs EA-level disease environment & health service obstacles from cs4c.dta.
+
+07_cs5b_agric_inputs.R
+
+Constructs EA-level agricultural input & service variables from cs5b.dta.
+
+08_merge_EA_files.R
+
+Full outer merges all cleaned EA-level files into EA_master_community_allmodules.dta.
+
+You can run these scripts sequentially to reproduce the final EA-level file.
+
+4. Coding Conventions
+
+Across all modules, the scripts enforce consistent conventions:
+
+Primary key
+
+EA_ID – Enumeration Area identifier (stored as character for merging across files).
+
+Binary variables
+
+All binary variables use a strict 1/0 coding:
+
+1 = Yes / Presence / True / Problem exists
+
+0 = No / Absence / False
+
+Original GLSS coding (e.g., 1 = Yes, 2 = No) is recoded to 1/0.
+
+In ties when aggregating to EA-level, presence (1) is used as the tie-breaker.
+
+Aggregation level
+
+All community-level information is collapsed to one row per EA_ID.
+
+Missing data
+
+Some continuous or heavily missing variables are dropped if >1/3 of observations are missing.
+
+For a subset of binary variables, NA is later set to 0 when conceptually interpreted as “no problem / no presence reported” at the EA level.
+
+5. Module Details
+5.1. cs0.dta – Community Heterogeneity
+
+Purpose: Construct an EA-level dummy capturing whether the EA contains multiple distinct communities.
+
+Key steps:
+
+5.1. cs1.dta – Population by EA
+
+Purpose: Aggregate population counts to EA level.
+
+Key steps:
+
+Load cs1.dta.
+
+Check missingness for region, district, eanum, and original population variable s1q1.
+
+Remove exact duplicate rows.
+
+Rename s1q1 → population.
+
+Drop region and district, keeping only eanum and population.
+
+Aggregate by eanum (EA):
+
+TOTAL_POPULATION = sum(population, na.rm = TRUE).
+
+Rename eanum → EA_ID.
+
+Convert EA_ID to character.
+
+Check for NAs in EA_ID and TOTAL_POPULATION.
+
+Label variables (EA_ID, TOTAL_POPULATION).
+
+Save as: cs1_cleaned.dta.
+
+5.2. cs2.dta – Infrastructure, Markets, Migration & Projects
+
+Purpose: Build EA-level indicators for infrastructure, markets, transport, migration, living standards, and community projects.
+
+Key concepts:
+
+Standardization: all GLSS binary 1 = Yes, 2 = No are converted to "1"/"0" (strings) then to numeric 1/0.
+
+Custom modal aggregation:
+
+A custom_modal_aggregator() chooses the most frequent category, with 1 preferred when a tie occurs in 0/1 variables.
+
+Key steps:
+
+Load & prepare
+
+Read cs2.dta.
+
+Rename IDs: region → REGION_ID, district → DISTRICT_ID, eanum → EA_ID.
+
+Convert key categorical columns (IDs and multiple-response fields) to character.
+
+Clean and binary recoding
+
+Keep only relevant columns (IDs + infrastructure, markets, migration, project codes).
+
+Remove exact duplicates.
+
+Use helper to_binary_01() to recode 1/2 questions to "1" / "0".
+
+Construct derived binary variables:
+
+is_farming_major – farming appears in any of top 4 economic activities.
+
+migration_out_agric, migration_in_agric.
+
+living_improved_binary – living conditions improved vs same/worse.
+
+work_increased_binary – work increased vs not.
+
+Expand major project codes (s2q38a, s2q38b, s2q38c) into separate dummies:
+
+proj_type_1_school, proj_type_2_health, … , proj_type_9_other.
+
+EA-level aggregation
+
+Group by REGION_ID, DISTRICT_ID, EA_ID.
+
+For each EA, compute:
+
+Binary modal indicators (0/1) for:
+
+farming_major_modal
+
+motorable_road_access, road_impassable_binary
+
+has_electricity_any, has_piped_water_any, has_post_office_phone
+
+has_bank, has_permanent_market, has_periodic_market
+
+public_transport_passes, seasonal_out_migration_agric, seasonal_in_migration_agric
+
+living_improved_modal, work_increased_or_not_modal
+
+proj_type_1_school_modal … proj_type_9_other_modal
+
+Mean EA-level distances:
+
+dist_to_road_km
+
+dist_to_major_market_km
+
+dist_to_transport_catch_km
+
+Convert 0/1 strings to numeric, clean NaN distances.
+
+Missing data filtering & imputation
+
+Drop high-missingness variables:
+
+dist_to_road_km, dist_to_transport_catch_km,
+
+seasonal_in_migration_agric, dist_to_major_market_km.
+
+Impute remaining NAs for:
+
+has_periodic_market, seasonal_out_migration_agric using their modal value 0 (treat missing as "No").
+
+Save final EA-level file as: cs2_cleaned.dta.
+
+5.3. cs3.dta – Education & Adult Literacy
+
+Purpose: Construct EA-level indicators for school presence, enrollment levels, and schooling barriers.
+
+Key steps:
+
+Dedup & select
+
+Load cs3.dta, remove exact duplicates.
+
+Keep:
+
+IDs: region, district, eanum.
+
+School presence: s3q1 (primary), s3q11 (JSS), s3q20 (SSS).
+
+Enrollment categories: s3q8 (boys primary), s3q9 (girls primary), s3q19 (JSS), s3q28 (SSS).
+
+Adult literacy program: s3q29.
+
+Non-attendance reasons: s3q10a–s3q10c.
+
+Rename to descriptive variables and drop region and district.
+
+Missingness and binary recoding
+
+Summarize missingness; drop non-reason variables with >30% NA (if any).
+
+Recode presence questions (school/program) from 1/2 to 1/0.
+
+Reason dummies
+
+Collapse Q10 reason codes (1–8) into binary dummies:
+
+reason_cost, reason_no_interest_parents, reason_no_interest_children,
+reason_school_far, reason_inadequate_facility, reason_dangerous_route,
+reason_child_labour, reason_other.
+
+EA aggregation
+
+Define:
+
+mode_yes_priority() – binary modal with YES as tie-breaker.
+
+mode_enrolment() – modal enrollment category (with highest category used in ties).
+
+Group by EA_ID and compute:
+
+School presence (binary modal):
+
+primary_school_present, jss_present, sss_present, adult_literacy_program.
+
+Enrollment levels (1–6):
+
+primary_enrol_boys_level, primary_enrol_girls_level,
+jss_enrol_level, sss_enrol_level.
+
+Schooling barriers (binary modal):
+
+reason_cost_modal, reason_no_interest_parents_modal,
+reason_no_int_children_modal, reason_school_far_modal,
+reason_inadequate_facility_modal, reason_dangerous_route_modal,
+reason_child_labour_modal, reason_other_modal.
+
+Barrier NA handling
+
+Replace NA in barrier dummies with 0 at EA-level (treated as “barrier not salient in this EA”).
+
+Save as: cs3_cleaned.dta.
+
+5.4. cs4a.dta – Health Worker Access
+
+Purpose: Capture EA-level access to different types of health providers and distance to care.
+
+Key concepts:
+
+s4aq0 – provider type (1–9).
+
+s4aq1 – presence (1 Yes, 2 No → recoded to 1/0).
+
+s4aq2 – distance (km) to nearest such provider.
+
+Provider groupings:
+
+General health providers:
+
+doctor, nurse, pharmacist, community health worker, medical assistant.
+
+Maternal/pregnancy providers:
+
+midwife, family planning worker.
+
+Key steps:
+
+Remove duplicates and drop region, district, and time variables.
+
+Recode s4aq1 to 1/0.
+
+Reconstruct community_id within each EA:
+
+Communities are inferred from sequences of provider codes; s4aq0 == 9 marks the end of each community block.
+
+At EA × community level, compute:
+
+Min distance to any general provider: general_min_dist_comm.
+
+Min distance to any maternal provider: maternal_min_dist_comm.
+
+Access flags: general_access_comm, maternal_access_comm.
+
+At EA level, compute:
+
+general_health_access (1 if any community has general_access_comm = 1).
+
+maternal_health_access (1 if any community has maternal_access_comm = 1).
+
+gen_healthaccess_dist_km – mean of per-community min distances (general).
+
+maternal_healthaccess_dist_km – mean of per-community min distances (maternal).
+
+Distance means set to NA if no valid distances exist.
+
+Create access index categories:
+
+general_health_access_index:
+
+"Facility in EA", "Nearby (<=5km)", "Distant (>5km)", "Access Unknown".
+
+maternal_health_access_index:
+
+"Maternity Care in EA", "Nearby (<=5km)", "Distant (>5km)", "Access Unknown".
+
+Save as: cs4a_cleaned.dta.
+
+5.5. cs4b.dta – Health Facilities
+
+Purpose: Capture EA-level presence and distance to health facilities: general, maternal, and medicine sources.
+
+Key facility groups:
+
+General health facilities: hospital, clinic/health post.
+
+Maternal facilities: maternity home, family planning clinic.
+
+Medicine access: drugstore / chemical store, pharmacy.
+
+Key steps:
+
+Load cs4b.dta, remove duplicates.
+
+Drop region, district, time to facility, year established, and dispensary indicators (distance-based focus).
+
+Recode s4bq5 (facility presence) from 1/2 to 1/0.
+
+Reconstruct community_id within EA by cumulative sum of s4bq0 == 15.
+
+At EA × community level, compute:
+
+general_min_dist_comm, maternal_min_dist_comm, medicine_min_dist_comm.
+
+general_access_comm, maternal_access_comm, medicine_access_comm.
+
+At EA level, compute:
+
+Presence dummies:
+
+general_health_facility, maternal_health_facility, medicine_access_facility (1 if any community has access).
+
+Distances:
+
+general_health_distance_km
+
+maternal_health_distance_km
+
+medicine_distance_km (mean of community minima, NA if no data).
+
+Save as: cs4b_cleaned.dta.
+
+5.6. cs4c.dta – Health Context & Disease Environment
+
+Purpose: Construct EA-level dummies for major diseases, health service problems, campaigns, and birth location.
+
+Key steps:
+
+Load cs4c.dta, remove exact duplicates.
+
+Select and rename:
+
+EA_ID, health problem codes (top 4), health service problem codes (top 4),
+
+birth_location_raw, imm_campaign_raw, antimal_campaign_raw.
+
+Drop region, district.
+
+Recode campaign questions:
+
+imm_campaign_5yr, antimal_campaign_5yr (1/2 → 1/0).
+
+Create disease dummies (dis_*) using top 4 health problem codes:
+
+dis_malaria, dis_hernia, dis_guinea_worm, dis_bilharzia,
+dis_measles, dis_cholera, dis_elephant, dis_csm,
+dis_goiter, dis_buruli, dis_oncho, dis_other.
+
+Create health service problem dummies (hp_*) from Q13:
+
+hp_no_facility, hp_lack_personnel, hp_cost, hp_too_far,
+hp_no_meds, hp_no_accomm, hp_inadequate, hp_other.
+
+Define modal aggregators:
+
+mode_with_tie_smallest() for categorical birth_location_raw.
+
+mode_yes_priority() for binary campaign variables.
+
+Aggregate to EA-level:
+
+EA-level disease presence: dis_*_EA (1 if any community reports problem).
+
+EA-level service problems: hp_*_EA.
+
+Campaigns: imm_campaign_5yr_EA, antimal_campaign_5yr_EA.
+
+birth_location_mode: EA-level modal birth location.
+
+Save EA-level health context file:
+
+cs4c_cleaned.dta.
+
+Compute prevalence statistics and construct a core subset (cs4c_core) for regression with selected health variables (e.g., dis_malaria_EA, hp_cost_EA, etc.).
+
+5.7. cs5b.dta – Agricultural Inputs & Services
+
+Purpose: Construct EA-level variables capturing agricultural service and input availability.
+
+Key steps:
+
+Load cs5b.dta, remove exact duplicates.
+
+Keep & rename:
+
+EA_ID, extension_centre_raw, cooperative_raw, tractors_count_raw,
+rice_husker_raw, chem_fertilizer_raw, pesticide_use_raw,
+irrigated_fields_raw, sharecroppers_raw.
+
+Drop region, district.
+
+Recode yes/no to 1/0 for all binary input variables.
+
+Create tractors_present_raw:
+
+1 if tractors_count_raw > 0, 0 if tractors_count_raw == 0, NA otherwise.
+
+Aggregate to EA-level using mode_yes_priority():
+
+extension_centre, cooperative, tractors_present,
+rice_husker, chem_fertilizer, pesticide_use,
+irrigated_fields, sharecroppers.
+
+Replace NA in rice_husker with 0 (treat missing as “no husker”).
+
+Summarize NAs in key variables and save as cs5b_cleaned.dta.
+
+6. EA-Level Merge (EA_master_community_allmodules.dta)
+
+Script: Master_Community.R
+
+Purpose: Merge all module-specific EA-level files into a single master file.
+
+Key steps:
+
+Load all cleaned .dta files:
+
+cs1_cleaned.dta, cs2_cleaned.dta, cs3_cleaned.dta,
+cs4a_cleaned.dta, cs4b_cleaned.dta, cs4c_cleaned.dta,
+cs5b_cleaned.dta .
+
+Standardize EA_ID as character in each dataset.
+
+Check for duplicate EA_IDs in each file and warn if present.
+
+Use purrr::reduce() and dplyr::full_join() to perform a full outer join on EA_ID, ensuring all EAs across modules are retained.
+
+Replace NA with 0 for conceptually binary EA-level variables, including:
+
+Disease dummies: dis_*_EA
+
+Health service problems: hp_*_EA
+
+Campaigns: imm_campaign_5yr_EA, antimal_campaign_5yr_EA
+
+Agricultural inputs: extension_centre, cooperative, tractors_present,
+rice_husker, chem_fertilizer, pesticide_use, irrigated_fields, sharecroppers
+
+birth_location_mode (coded 0 if missing).
+
+Save final master file:
+
+EA_master_community_allmodules.dta.
+
+7. How to Run the Project
+
+Place all required raw .dta files (cs0.dta, sec0a.dta, cs1.dta, cs2.dta, cs3.dta, cs4a.dta, cs4b.dta, cs4c.dta, cs5b.dta) in your working directory.
+
+Open R / RStudio and set the working directory to the project folder:
+
+setwd("path/to/your/project")
+
+
+Ensure all required packages are installed.
+
+RRun the scripts in the following order:
+
+Cleaned_cs0.R
+
+Cleaned_cs1.R
+
+Cleaned_cs2.R
+
+Cleaned_cs3.R
+
+Cleaned_cs4a.R
+
+Cleaned_cs4b.R
+
+Cleaned_cs4c.R
+
+Cleaned_cs5b.R
+
+Master_Community.R ← Final merging script
+
+Output Files Generated by Each Script
+Script Name	Output File Produced
+Cleaned_cs0.R	cs0_cleaned.dta
+Cleaned_cs1.R	cs1_cleaned.dta
+Cleaned_cs2.R	cs2_cleaned.dta
+Cleaned_cs3.R	cs3_cleaned.dta
+Cleaned_cs4a.R	cs4a_cleaned.dta
+Cleaned_cs4b.R	cs4b_cleaned.dta
+Cleaned_cs4c.R	cs4c_cleaned.dta
+Cleaned_cs5b.R	cs5b_cleaned.dta
+Master_Community.R	EA_master_community_allmodules.dta
+How to Run the Project (Updated)
+
+Place all raw .dta files in your working directory.
+
+Set your project folder as the working directory:
+
+setwd("path/to/project")
+
+
+Install required packages (only once):
+
+install.packages(c("haven", "dplyr", "tidyr", "purrr", "labelled", "tidyverse"))
+
+
+Run scripts in the exact order listed above.
+
+After running Master_Community.R, your final EA-level dataset will be created:
+
+EA_master_community_allmodules.dta

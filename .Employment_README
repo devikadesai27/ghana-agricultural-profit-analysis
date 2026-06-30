@@ -1,0 +1,82 @@
+Employment Data Processing (sec4a)
+
+Overview:
+
+-This document describes the process of preparing the sec4a dataset for household-level employment analysis.
+-The raw data contains individual-level employment information,including screening questions, types of work, and occupations.
+-The goal is to clean, recode, and aggregate the data to create household-level indicators for employment and farm-related occupations.
+
+Data Processing Steps:
+
+1. Libraries Used:
+
+-haven: To read Stata .dta files.
+
+-tidyverse: For data manipulation (dplyr, tidyr) and piping operations.
+
+-labelled: To assign descriptive variable labels to variables.
+
+2. Data Import:
+-The raw sec4a.dta file was imported using read_dta().
+
+3. Variable Selection
+-Variables of interest were selected to reduce dataset size and focus on highly relevant employment questions:
+nh, pid, clust, s4aq1, s4aq2, s4aq3,s4aq5, s4aq6, s4aq8a, s4aq8b, s4aq8c, s4aq9
+-These variables capture individual work activity, types of work, and multiple occupations.
+
+4. Handling Missing Values:
+-Missing values (NA) in the dataset were replaced with 0 to indicate “not applicable” or “no response.”
+- Variables cleaned include: s4aq2, s4aq3, s4aq5, s4aq6,s4aq8a, s4aq8b, s4aq8c, s4aq9
+
+5.Individual Level Employment Recoding
+-Binary coding was applied for employment variables:
+-1 = Yes (worked), 2 = No (did not work), 0 values kept as is (treated as "No" for aggregation purposes)
+-This simplifies aggregation at the household level.
+
+6. Household Level Aggregation
+-Employment variables weere aggregated to the household level (nh+clust) using the max() funcyion:
+- If any houshold member answered "Yes" for a given variable, the household-level value is 1
+- otherwise it is 2.
+-Converted back to survey coding after aggregation.
+
+7. Occupation Coding (Farm Work):
+Individual-Level farm Indicators:
+- Binary farm indicators were created for occupation variables (s4aq5, s4aq6, s4aq8a, s4aq8b, s4aq8c) using occupation codes 60,61,62.
+-Only occupations actually performed (s4aq9 = 1) were counted.
+
+Household_level farm Aggregation:
+-Household-level farm occupation indicators were computed using max() across all members.
+-Rule: If any household member has 1 → household = 1 (Yes). Otherwise → household = 2 (No).
+
+8. Composite Household Farm Indicator
+-A summury variable any_farm_hh was created:
+-any_farm_hh = 1 if any household member engages in farm activity (any of s4aq5_hh to s4aq8c_hh) any_farm_hh = 0 otherwise.
+-This simplifies multiple occupation variables into a single binary indicator for regression analysis.
+
+
+9. Combining Household Employment Data
+-Household-level employment indicators (s4aq1_hh, s4aq2_hh, s4aq3_hh) were merged with household-level farm occupation indicators (s4aq5_hh to s4aq9_hh).
+-Variable labels were assigned for clarity.
+
+10. Binary Conversion for Regression:
+-All household-level Yes/No variables were converted to regression-ready binary.(1= yes, 0= No)
+-Variables included:
+-s4aq1_hh, s4aq2_hh, s4aq3_hh,s4aq5_hh, s4aq6_hh, s4aq8a_hh, s4aq8b_hh, s4aq8c_hh, s4aq9_hh, any_farm_hh.
+
+
+11. Quality Checks
+-Duplicates:Checked for duplicate household entries using clust + nh.None found
+-Missing Values:Checked for any remaining NAs after aggregation.None present.
+-Summary Statistics:Reviewed distributions and minimum/maximum values to ensure consistency.
+
+12. Notes:
+-Aggregation rules ensure that if any member participates, the household is coded as participating.
+-Farm coding is specific to occupation codes 60–62 and only counts if the occupation was actually performed.
+-any_farm_hh provides a simplified indicator for household involvement in any farm activity.
+-All coding follows survey conventions for binary employment variables.
+
+13.Output:
+-The final cleaned and aggregated dataset is saved as:
+generated_data/employment_final.rds
+-Contains household-level employment and farm occupation variables, ready for analysis.
+

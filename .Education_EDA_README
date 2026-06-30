@@ -1,0 +1,52 @@
+This section focuses on exploring the relationship between household education indicators and agricultural profitability, measured as profit per acre. 
+The analysis aggregates data at the clust_nh (cluster-household) level and uses both numeric and binary education indicators.
+
+1. Data Preparation:
+Merging and cleaning:
+-education_final and employment_final datasets are merged with the master file Final_EDA_master_file using a unique identifier clust_nh.
+-clust_nh is created in each dataset as paste0(clust, "_", nh) to uniquely identify households within clusters.
+-The merged dataset is saved as project_EDA_final.rds for further analysis.
+
+2. Selected Education Indicators
+Numeric Variables:
+-s2aq2_hh: Highest level of education completed (numeric)
+-s2aq3_hh: Highest educational qualification (numeric)
+
+Binary Variables:
+s2cq5_hh: Household member can perform written calculation (0 = No, 1 = Yes)
+s2cq1_hh: Household member can read letters in English (0 = No, 1 = Yes)
+s2cq3_hh: Household member can write in English (0 = No, 1 = Yes)
+
+3. Aggregation at clust_nh level
+-Numeric variables: Averaged across households (mean_s2aq2_hh, mean_s2aq3_hh).
+-Binary variables: Converted to percentages representing the proportion of household members with the skill (pct_s2cq5_hh, pct_s2cq1_hh, pct_s2cq3_hh).
+
+4. Correlation Analysis
+Purpose: Assess linear relationships between education indicators and profit per acre.
+Method: Pearson correlation is computed:
+-Numeric variables directly
+-Binary variables as percentages
+Interpretation:
+-Positive correlation → Higher education is associated with higher profit per acre.
+-Negative correlation → Higher education is associated with lower profit per acre.
+-Values near zero → No clear association.
+
+Examples from output:
+mean_s2aq2_hh: -0.035, mean_s2aq3_hh: -0.048, pct_s2cq5_hh: 0.046, pct_s2cq1_hh: 0.039, pct_s2cq3_hh: 0.039
+These values suggest weak linear relationship between education indicators and farm profitability at the household level.
+
+5. Visualization:
+Scatter Plots(Numeric Variables):
+- Plots profit_per_acre vs numeric education indicators (mean_s2aq2_hh and mean_s2aq3_hh).
+- Includes linear regression smoothing to visualize potential trends.
+- Facets: Each numeric indicator in a separate panel with descriptive labels.
+
+Box Plots (Binary Variables):
+-Binary variables converted to two groups based on percentage of household members with the skill: "Able (≥50%)" and "Not Able (<50%)"
+-Plots profit_per_acre for these groups using boxplots.
+-Facets: Each binary indicator in a separate panel with descriptive labels.
+
+6 Purpose of plots:
+- Scatter plots help identify potential linear trends or outliers for numeric indicators.
+- Box plots allow comparison of profit distributions between groups with and without a specific educational skill.
+- These plots help explore nonlinear relationships or thresholds that correlation alone may not reveal.

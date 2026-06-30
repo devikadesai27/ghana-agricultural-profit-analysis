@@ -1,0 +1,46 @@
+This section of the project analyzes the relationship between household employment indicators and agricultural profit performance at the clust_nh (cluster–household) level. The objective is to understand whether certain household employment characteristics are associated with variations in profit per acre, a key measure of agricultural productivity.
+
+1. Variables used in the analysis:
+The analysis focuses on the following binary employment variables, extracted from final data set.
+s4aq1_hh: Household member worked for payment (0 = No, 1 = Yes)
+s4aq2_hh: Household earned money in cash or kind (0 = No, 1 = Yes)
+s4aq3_hh: Household member worked on household farm (0 = No, 1 = Yes)
+s4aq9_hh: Household member had an occupation over the same reference period (0 = No, 1 = Yes)
+any_farm_hh: Household involved in any farm activity (0 = No, 1 = Yes)
+
+The outcome variable is:
+Profit_per_acre: Farm profit normalizaed by cultivated land area.
+
+2. Correlation Analysis:
+A simple Pearson correlation was computed between each employment variable and profit per acre.
+
+Purpose:
+-To determine whether each employment indicator shows a positive, negative, or no meaningful association with farm profitability.
+-Since variables are binary, the correlation behaves like a difference in means measure.
+
+Interpretation Guide:
+-Positive value: Households with “Yes = 1” tend to have higher profit per acre.
+-Negative value: Households with “Yes = 1” tend to have lower profit per acre.
+- Values near zero: No meaningful relationship.
+
+3. Data Reshaping for Visualization
+To prepare the data for plotting:
+-The dataset is converted from wide format to long format using pivot_longer().
+-This structure allows each employment variable to be plotted in a separate facet panel.
+-Rows with missing employment status are removed to prevent empty boxplots.
+
+4. Box Plot Visualization
+Boxplots were created for each employment variable, comparing:
+-x-axis: Employment status (0 = No, 1 = Yes)
+-y-axis: Profit per acre
+
+Purpose of the Plots:
+-To visually compare how profit per acre differs between “Yes” and “No” groups.
+-To detect:
+-skewness in profit distribution
+-outliers
+-group mean/median differences
+-possible nonlinear patterns that correlations may not capture
+
+Facet Wrapping:
+Each employment variable appears in its own facet panel, with descriptive variables (eg. "Worked for payment", "Any farm activity"). This makes the plot easier to interpret.

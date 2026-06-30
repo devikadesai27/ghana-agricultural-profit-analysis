@@ -1,0 +1,78 @@
+Household-Level Education Dataset
+
+Dataset Overview:
+
+This dataset, education_final, aggregates individual-level education information from three sections of the household survey:
+
+1. sec2a: General education (attendance, highest level, qualification, current schooling)
+
+2. sec2b: Vocational and tertiary education (attendance, years, certificates, qualifications)
+
+3. sec2c: Literacy, apprenticeship, and short training (reading/writing, calculation, literacy courses, apprenticeship, short courses)
+
+The aggregation is performed at the household level using household ID (nh) and enumeration area (clust).
+
+Data Processing Steps:
+
+1. Variable Selection:
+
+Only relevant variables were selected from each section.
+Redundant or non-informative variables were dropped.
+
+2. Missing Value Handling:
+
+Numeric variables (years of schooling, certificates, apprenticeship duration):
+-NAs replaced with 0 (indicating no participation).
+
+Yes/No variables (attendance, literacy, apprenticeship):
+-Converted to binary (1 = Yes, 0 = No) for aggregation.
+-NAs treated as No in household-level aggregation.
+
+3. Recoding
+Yes/No variables at household level:
+-Aggregated using max() across household members (if any member said Yes → household-level Yes).
+-Converted back to survey coding: 1 = Yes, 2 = No.
+
+Apprenticeship Status:
+-1 = currently or previously an apprentice, 0 = never an apprentice.
+
+Key Education attainment variables converted to numeric for regression/analysis:
+-Highest education level (s2aq2_hh)
+-Highest qualification (s2aq3_hh)
+-Highest vocational certificate (s2bq3_hh)
+-Highest tertiary qualification (s2bq8_hh)
+
+
+4. Household level Aggregation
+-Yes/No variables: max() across household members - household-level indicator if any member responded "Yes".
+-Numeric variables: max() - captures highest level or years among household members.
+
+5. Merging Sections
+-Household-level datasets from sec2a, sec2b, and sec2c were merged using left_join on clust and nh.
+-Households missing in sec2b (vocational/tertiary) assumed to have no participation.
+
+Data Quality Checks
+-No duplicates remain at the household level (clust + nh).
+-All missing values for vocational/tertiary education filled with 0 (numeric) or 2 (No, Yes/No variables).
+-Variable type conversions: Yes/No variables are binary (1 = Yes, 0 = No); ordinal variables numeric for modeling.
+-Household coverage: All households included; missing individuals assumed to have zero or no participation.
+
+Summary Highlights:
+1. Total Households: nh:min=1 and max=25, clust: min=4002 and max=4999
+
+2. Highest Education Levels (household max):
+-s2aq2_hh (Highest level completed): peaks at maximum level in survey.
+-s2bq6_hh (Years attended tertiary school): maximum 21 years. This value is part of the raw dataset and will be kept as is.
+-s2cq8a_hh (Years in apprenticeship): maximum 39 years. This value is part of the raw dataset and will be kept as is.
+
+3. Attendance Indicators:
+-Majority of households have s2aq1_hh = 1 (ever attended school).
+-Fewer households have vocational/tertiary attendance (s2bq1_hh and s2bq5_hh mostly 2 = No).
+
+4. Literacy & Skills:
+- Most households have at least one member who can read/write in English (s2cq1_hh, s2cq3_hh).
+-Apprenticeship duration varies widely; peak values are retained as part of the raw survey data.
+
+5. Key Patterns:
+-Max aggregation ensures household captures highest attainment or participation among members.
+-NA replacement strategy ensures no missing values in final dataset.

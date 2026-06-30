@@ -1,0 +1,328 @@
+README — Household Profit per Acre, Community Merge, Education/Employment & sec1 Roster
+1. Overview
+
+This part of the project builds a household-level analytic dataset with profit per acre, merges it with community-level EA data, then with education/employment data from a teammate, and finally with household roster data (sec1).
+
+At the very end, you get a fully enriched modeling dataset at the household level.
+
+High-level flow:
+
+Build household farm area (acres) from sec8b.dta.
+
+Build household profit per acre from agg2.dta + land acres.
+
+Remove extreme outliers & merge with EA-level community master + region/district → Final_EDA_master_file.rds.
+
+Teammate merges in education & employment → project_EDA_final 1.rds.
+
+You merge household roster (sec1) on top → project_EDA_final_with_sec1.rds (final modeling file).
+
+2. Required Input & Output Files
+Inputs 
+
+sec8b.dta — Farm land plots and area (Section 8b).
+
+agg2.dta — Agricultural income aggregates.
+
+EA_master_community_allmodules.dta — EA-level community master (from earlier pipeline).
+
+sec0a.dta — EA/cluster crosswalk with region and district.
+
+sec1.dta — Household roster (ages, sex, household head, etc.).
+
+project_EDA_final 1.rds — Output from your teammate (education/employment merged onto Final_EDA_master_file.rds).
+
+Intermediate Files You Create
+
+sec8b_farm_land_household_level.rds
+
+agg2_profit_per_acre_household.rds
+
+agg2_profit_per_acre_household_without_outliers.rds
+
+EDA_master_file.dta
+
+Final_EDA_master_file.rds
+
+project_EDA_final_with_sec1.rds ✅ final modeling dataset
+
+3. Script Execution Order (This Section of the Project)
+
+After the EA-level community pipeline is done and EA_master_community_allmodules.dta exists, run:
+
+sec8b_farm_land_clean.R
+
+agg2_profit_per_acre.R
+
+EDA/master build script
+
+loads agg2_profit_per_acre_household.rds
+
+removes outliers
+
+merges with EA_master_community_allmodules.dta and sec0a.dta
+
+creates EDA_master_file.dta and Final_EDA_master_file.rds
+
+Teammate step (outside this README)
+
+Takes Final_EDA_master_file.rds
+
+Merges in education & employment data
+
+Outputs: project_EDA_final 1.rds
+
+sec1_household_roster_merge.R (your new script shown below)
+
+Merges sec1.dta roster info into project_EDA_final 1.rds
+
+Outputs: project_EDA_final_with_sec1.rds (final dataset)
+
+4. Script Details
+4.1 Profit_per_acre.R
+
+Purpose: Build total farm land area in acres per household.
+
+Key Steps:
+
+Load sec8b.dta.
+
+Keep only:
+
+clust (cluster/EA ID)
+
+nh (household within cluster)
+
+s8bq4a (area value)
+
+s8bq4b (unit code)
+
+Create unique HH ID:
+
+clust_nh = paste0(clust, "_", nh)
+
+
+Convert to acres (land_area_acres) via s8bq4b:
+
+1 = Acres → as-is
+
+2 = Poles → treat as acres
+
+3 = Ropes → 9 ropes = 1 acre → s8bq4a / 9
+
+4 = Other → NA
+
+Aggregate to household-level:
+
+total_farm_area_acres = sum(land_area_acres, na.rm = TRUE) per clust_nh.
+
+Output:
+
+sec8b_farm_land_household_level.rds
+
+One row per household (clust, nh, clust_nh, total_farm_area_acres).
+
+4.2 Profit_per_acre.R
+
+Purpose: Build total profit per household and profit per acre.
+
+Key Steps:
+
+Load:
+
+agg2.dta → agricultural income/depreciation.
+
+sec8b_farm_land_household_level.rds → land area.
+
+Remove exact duplicates in agg2.
+
+Create clust_nh in agg2.
+
+Keep clust, nh, clust_nh, agri1c, hhagdepn.
+
+Define safe_sum() to handle all-NA sums cleanly.
+
+Aggregate by clust_nh:
+
+total_agri1c = sum of agri1c.
+
+total_depr = sum of hhagdepn.
+
+total_profit = total_agri1c - total_depr.
+
+Inner join with land file on clust_nh.
+
+Compute:
+
+profit_per_acre = total_profit / total_farm_area_acres
+
+
+(set to NA when land is missing or zero).
+
+Output:
+
+agg2_profit_per_acre_household.rds.
+
+4.3 EDA + Master Build Script
+
+Purpose:
+Take the household profit_per_acre data, remove outliers, merge with community & geographic data, run EDA, and create an EDA-ready master file.
+
+Key Inputs:
+
+agg2_profit_per_acre_household.rds
+
+EA_master_community_allmodules.dta
+
+sec0a.dta
+
+Key Steps (Summary):
+
+Outlier removal on profit_per_acre using 1.5 × IQR rule:
+
+Creates agg2_profit_per_acre_household_without_outliers.rds.
+
+Merge with EA-level community master
+
+Join on cluster ID (clust matched to EA_ID + 4000).
+
+Create rural_dummy = 1 where EA exists in community master, else 0.
+
+Save as EDA_master_file.dta.
+
+Attach region & district from sec0a.dta
+
+Build EA-level crosswalk and join on cluster.
+
+Type checks, NA handling & binary variables
+
+Explore structure, missingness.
+
+For health/disease variables, replace NA → 0 only when rural_dummy == 1 (no report treated as “no problem” in rural data; urban stays as missing).
+
+Save EDA master
+
+Final_EDA_master_file.rds — hand-off file to teammate.
+
+EDA & Correlations
+
+Create boxplots of profit_per_acre by key binary covariates (infrastructure, health, education environment, inputs, etc.), saving as EDA_*.png.
+
+Compute and print correlations between profit_per_acre and selected covariates.
+
+4.4 Teammate Step — Education & Employment Merge
+
+This step is performed by your teammate.
+
+Purpose: Enrich Final_EDA_master_file.rds with detailed education and employment variables.
+
+I/O:
+
+Input: Final_EDA_master_file.rds.
+
+Output: project_EDA_final 1.rds (household file with:
+
+profit per acre,
+
+community/infrastructure/health/agric inputs,
+
+plus education/employment variables from your teammate).
+
+4.5 Mater_file_model.R 
+
+Purpose
+
+Bring in household roster information from sec1.dta (especially:
+
+household head gender,
+
+count of working-age adults 15–50)
+
+Merge this onto your teammate’s file to create the final modeling dataset.
+
+Key Steps
+
+Load & deduplicate sec1.dta
+
+sec1_raw   <- read_dta("sec1.dta")
+sec1_clean <- sec1_raw %>% distinct()
+
+
+Build household-level variables from sec1
+
+Group by clust, nh and compute:
+
+labour_age_15_50_count
+
+labour_age_15_50_count = sum(!is.na(agey) & agey >= 15 & agey <= 50)
+
+
+head_sex = sex of household head, defined as pid == 1.
+Then convert to binary:
+
+is_head_male = case_when(
+  head_sex %in% c(1, "1", "M", "m", "Male", "male")   ~ 1,
+  head_sex %in% c(2, "2", "F", "f", "Female", "female") ~ 0,
+  TRUE ~ NA_real_
+)
+
+
+Create clust_nh again:
+
+clust_nh = paste0(clust, "_", nh)
+
+
+Final sec1_hh contains:
+
+clust_nh
+
+is_head_male (1 = male head, 0 = female head)
+
+labour_age_15_50_count (number of 15–50-year-olds in the household)
+
+NA diagnostics (optional)
+
+Summarise NA counts for these new variables via na_summary (printed but not saved).
+
+Merge onto teammate’s file
+
+Load:
+
+project <- readRDS("project_EDA_final 1.rds")
+
+
+Left join:
+
+project_joined <- project %>%
+  left_join(sec1_hh, by = "clust_nh")
+
+
+This preserves all households in project_EDA_final 1.rds and appends roster info where clust_nh matches.
+
+Save final dataset
+
+saveRDS(project_joined, "project_EDA_final_with_sec1.rds")
+
+
+✅This is final modeling file, containing:
+
+Profit per acre and farm characteristics
+
+Infrastructure, community, health, and agricultural input variables
+
+Education/employment (from teammate)
+
+Household composition and head gender (from sec1)
+
+5. Final Data for Modeling
+
+The full pipeline ends with:
+
+project_EDA_final_with_sec1.rds
+
+This file is the final integrated dataset that can be used for:
+
+Regression modeling of profit_per_acre
+
+
+
